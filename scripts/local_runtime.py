@@ -2,6 +2,7 @@
 """Start/stop this checkout's loopback-only integration, never a public chain."""
 import json
 import os
+import re
 import shutil
 import signal
 import socket
@@ -144,9 +145,20 @@ def deploy(rpc, run_id, frontend='http://127.0.0.1:5173', *, mode='demo'):
 
 
 def running(meta):
-    pid = int(meta['pid'])
+    try:
+        pid = int(meta['pid'])
+        run_id = meta['run_id']
+    except (KeyError, TypeError, ValueError):
+        return False
+    if pid <= 0 or not isinstance(run_id, str) or not run_id:
+        return False
     result = subprocess.run(['ps','-p',str(pid),'-o','command='],capture_output=True,text=True)
-    return result.returncode==0 and str(Path(__file__).resolve()) in result.stdout and 'serve' in result.stdout and meta['run_id'] in result.stdout
+    # Parent directories can be renamed while this process is alive. Match the
+    # Python supervisor's exact role and run ID, never an arbitrary substring.
+    command = (r'(?:.+/)?python(?:\d+(?:\.\d+)*)?\s+'
+               r'.+/scripts/local_runtime\.py\s+serve\s+' + re.escape(run_id)
+               + r'(?:\s+(?:demo|empty))?')
+    return result.returncode == 0 and re.fullmatch(command, result.stdout.strip()) is not None
 
 
 def serve(run_id, mode='demo'):

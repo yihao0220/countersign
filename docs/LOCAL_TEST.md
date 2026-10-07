@@ -91,9 +91,15 @@ cd ..
 .venv/bin/python -m pytest -q backend/tests
 cd frontend
 pnpm run typecheck
+pnpm run check:interface
+pnpm run check:controls
 pnpm run build
 ```
 
 整合测试自行启动独立临时 Anvil 端口并关闭，不修改当前页面使用的测试链。检查范围是本地 HTTP、数据库、合约回执和余额；不代表安全审计、公链运行或真实浏览器钱包签名完成。
+
+`check:controls` 直接检查页面发送入口与等待行：断开、错链和非 Owner 管理操作不发送，已连接账户仍可执行到期申请，按钮到期状态以后台为准而非本机时钟。它不发交易，不能替代浏览器联调。
+
+父目录改名后，`status/stop/start` 按 Python 管理进程的脚本、`serve` 和完整运行编号识别同次实例，不再要求旧进程路径等于当前绝对路径。修代码不会自动重启已运行实例；停止再启动仍创建新测试链与账本，旧记录保留在 `.runtime/`。
 
 来源和改动说明见 [INTEGRATION_SOURCES.md](INTEGRATION_SOURCES.md)。

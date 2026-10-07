@@ -200,6 +200,40 @@ def test_clock_offsets_match_number_of_simulated_waits(runtime):
     with pytest.raises(RuntimeError, match='未知'): runtime.initialization_delay('unknown')
 
 
+@pytest.mark.parametrize('path, mode', [
+    ('/old/黑松客/countersign', ''),
+    ('/new/黑客松/countersign', ' demo'),
+    ('/a directory/countersign', ' empty'),
+])
+def test_running_recognizes_supervisor_after_directory_rename(runtime, monkeypatch, path, mode):
+    command = f'{path}/.venv/bin/python {path}/scripts/local_runtime.py serve saved-run{mode}\n'
+    def ps(args, **kwargs):
+        assert args == ['ps','-p','8020','-o','command=']
+        return subprocess.CompletedProcess(args, 0, stdout=command)
+    monkeypatch.setattr(runtime.subprocess, 'run', ps)
+    assert runtime.running({'pid':8020,'run_id':'saved-run'})
+
+
+@pytest.mark.parametrize('command', [
+    '/usr/bin/python /old/scripts/local_runtime.py serve saved-run-other',
+    '/usr/bin/python /old/scripts/local_runtime.py serve other-run saved-run',
+    '/usr/bin/python /old/scripts/local_runtime.py status saved-run',
+    '/usr/bin/python /old/scripts/unrelated.py serve saved-run',
+    '/usr/bin/node /old/scripts/local_runtime.py serve saved-run',
+    '/usr/bin/python /old/scripts/local_runtime.py serve saved-run extra',
+])
+def test_running_rejects_unrelated_or_reused_pid(runtime, monkeypatch, command):
+    monkeypatch.setattr(runtime.subprocess, 'run', lambda *a, **k:subprocess.CompletedProcess(a,0,stdout=command))
+    assert not runtime.running({'pid':8020,'run_id':'saved-run'})
+
+
+def test_running_rejects_exited_and_invalid_pid(runtime, monkeypatch):
+    monkeypatch.setattr(runtime.subprocess, 'run', lambda *a, **k:subprocess.CompletedProcess(a,1,stdout=''))
+    assert not runtime.running({'pid':8020,'run_id':'saved-run'})
+    for meta in ({}, {'pid':0,'run_id':'saved-run'}, {'pid':'bad','run_id':'saved-run'}, {'pid':1,'run_id':''}):
+        assert not runtime.running(meta)
+
+
 def test_serve_command_passes_empty_mode(runtime, tmp_path, monkeypatch):
     monkeypatch.setattr(runtime, 'STATE', tmp_path)
     monkeypatch.setattr(runtime, 'CURRENT', tmp_path / 'current.json')

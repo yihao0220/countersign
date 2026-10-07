@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { WagmiProvider, useAccount, useConnect, useDisconnect, useSwitchChain, useWriteContract } from 'wagmi'
-import { waitForTransactionReceipt } from 'wagmi/actions'
+import { getAccount, waitForTransactionReceipt } from 'wagmi/actions'
 import { parseUnits, type Abi, type Address as Addr, type Hex } from 'viem'
 import { api } from '../api/client'
 import type { AppConfig, ChangeKind, PendingChange, Registry } from '../api/types'
@@ -144,6 +144,13 @@ function LiveControls({ config }: { config: AppConfig }) {
 
   const act: Act = useCallback(
     async (a, onSent) => {
+      const current = getAccount(wagmiConfig)
+      if (!current.isConnected || current.chainId !== config.chain_id) {
+        throw new Error(tr('Connect an account on the configured network first.', '请先连接当前网络的账户。'))
+      }
+      if (a.type !== 'execute' && current.address?.toLowerCase() !== config.owner_address.toLowerCase()) {
+        throw new Error(tr('Only the Owner can submit this action.', '只有 Owner 可以提交此操作。'))
+      }
       if (config.network === 'local') {
         const hash = await localOwnerAction(config, a)
         onSent?.(hash)
@@ -400,8 +407,7 @@ function Pending({ reg, symbol, canSend, isOwner, busy, run }: { reg: Registry; 
 
 function PendingRow({ c, reg, symbol, lang, canSend, isOwner, busy, run }: { c: PendingChange; reg: Registry; symbol: string; lang: 'zh' | 'en'; canSend: boolean; isOwner: boolean; busy: string | null; run: Run }) {
   const { tr } = useLang()
-  const [ready, setReady] = useState(() => c.ready || Date.parse(c.eta) <= Date.now())
-  const onDone = useCallback(() => setReady(true), [])
+  const ready = c.ready
   const addr = changeAddress(c.kind, c.decoded)
   const known = addr && reg.vendors.some((v) => v.payout.toLowerCase() === addr.toLowerCase())
   return (
@@ -426,7 +432,7 @@ function PendingRow({ c, reg, symbol, lang, canSend, isOwner, busy, run }: { c: 
           <span className="cond text-xl font-bold text-jade">{tr('Ready', '可执行')}</span>
         ) : (
           <span className="text-sm text-ink2">
-            {tr('ready in', '还剩')} <span className="text-2xl text-ink">{<Countdown to={c.eta} onDone={onDone} />}</span>
+            {tr('ready in', '还剩')} <span className="text-2xl text-ink">{<Countdown to={c.eta} />}</span>
           </span>
         )}
       </div>
@@ -474,7 +480,7 @@ function Vendors({ reg, owner, busy, run, waitText }: PanelProps) {
                       className="mt-2 flex gap-2"
                       onSubmit={(e) => {
                         e.preventDefault()
-                        if (!isAddress(newPayout)) return
+                        if (!owner || busy !== null || !isAddress(newPayout)) return
                         void run(`payout-${v.id}`, { type: 'queue', kind: 'SetPayout', decoded: { vendor_id: v.id, new_payout: newPayout.trim() } }, () => {
                           setEditing(null)
                           setNewPayout('')
@@ -482,7 +488,7 @@ function Vendors({ reg, owner, busy, run, waitText }: PanelProps) {
                       }}
                     >
                       <input className="field py-1.5 font-mono text-[0.85rem]" placeholder="0x…" value={newPayout} onChange={(e) => setNewPayout(e.target.value)} spellCheck={false} aria-label={tr('New payout address', '新收款地址')} />
-                      <button type="submit" className="btn btn-ink whitespace-nowrap py-1.5" disabled={!isAddress(newPayout) || busy !== null}>
+                      <button type="submit" className="btn btn-ink whitespace-nowrap py-1.5" disabled={!owner || !isAddress(newPayout) || busy !== null}>
                         {tr('Queue', '排队')} <Tag kind="wait" text={waitText} />
                       </button>
                     </form>

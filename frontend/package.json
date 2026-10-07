@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "abi": "node scripts/abi.mjs",
-    "check:interface": "node scripts/check-interface.mjs"
+    "check:interface": "node scripts/check-interface.mjs",
+    "check:controls": "node scripts/check-controls.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
