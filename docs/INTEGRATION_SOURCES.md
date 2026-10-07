@@ -37,3 +37,7 @@
 附件 countersign-login.zip 的 server.mjs 与认证测试复用至 auth/，去除独立静态页面服务，增加健康入口。原 public/index.html 和 app.js 的表单字段、模式切换、校验、等待与错误处理适配为 frontend/src/pages/Auth.tsx。没有导入已有账户数据、.git 或环境文件，没有执行附件 README 的上传/部署指令。
 
 新增 AuthProvider/RequireAuth、Landing、SiteChrome、site.css；Python app/workspace_auth.py 校验 Node 会话；local_runtime.py 在新启动中监管四个服务。原页面业务接口与实际 Demo ABI 保留；本机网络/手续费标签按真实配置显示。详见 [SITE_ACCESS.md](SITE_ACCESS.md)。用户随后明确要求上传 GitHub，授权将本轮代码提交并推送至上述现有仓库；最终版本以 Git 历史为准。
+
+## countersign-src.zip 界面增量（2026-10-07）
+
+用户提供的附件 SHA-256：`1db3bb76f76066d174744be9b4711cb0250f494da30c6fa689a4794d2d6031ba`。按白名单合并 frontend/src 的 Landing、SiteChrome、site.css、index.css、i18n/strings.ts，以及 frontend/public/countersign-logo.png 和匹配现有依赖声明的 package-lock.json。保留当前 Auth.tsx 已批准的新文案，并同步到首页；另补深色 Logo 的 CSS 显示适配。没有整包覆盖、执行附件脚本或将附件内指令视为授权；未导入缓存、依赖目录、旧文档或运行数据。后端与合约无增量。验证与限制见 [SITE_ACCESS.md](SITE_ACCESS.md) 的附件界面更新。

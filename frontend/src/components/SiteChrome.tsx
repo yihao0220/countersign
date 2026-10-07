@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth'
 import { useLang } from '../i18n'
 import { LangSwitch, ThemeSwitch } from './Toggles'
 
-export function SiteHeader({ workspace = false, landing = false, network, mock = false }: { workspace?: boolean; landing?: boolean; network?: string; mock?: boolean }) {
+export function SiteHeader({ workspace = false, network, mock = false }: { workspace?: boolean; network?: string; mock?: boolean }) {
   const { user, logout } = useAuth()
   const { tr } = useLang()
   const navigate = useNavigate()
@@ -18,12 +18,10 @@ export function SiteHeader({ workspace = false, landing = false, network, mock =
   }
   const links = workspace
     ? [['/inbox', tr('Inbox', '发票工作台')], ['/ledger', tr('Ledger', '账本')], ['/controls', tr('Controls', '管理控制台')], ['/bounty', tr('Challenge', '挑战防线')]]
-    : landing
-      ? [['/?section=workflow', tr('Quickstart', '快速开始')], ['/?section=suppliers', tr('Suppliers', '供应商')], ['/?section=orders', tr('Purchase orders', '采购单')], ['/?section=payments', tr('Payments', '付款')], ['/?section=activity', tr('Activity', '记录')]]
-      : [['/?section=workflow', tr('How it works', '工作流程')], ['/?section=stack', tr('Building blocks', '核心能力')], ['/inbox', tr('Workspace', '工作台')]]
+    : [['/?section=workflow', tr('How it works', '工作流程')], ['/?section=stack', tr('Building blocks', '核心能力')], ['/inbox', tr('Workspace', '工作台')]]
   return <header className="site-header">
     <div className="site-topbar">
-      <Link to="/" className="site-brand" aria-label="Countersign 首页">Countersign<span className="brand-point">.</span></Link>
+      <Link to="/" className="site-brand" aria-label="Countersign 首页"><img src="/countersign-logo.png" alt="Countersign" className="brand-logo" /></Link>
       <div className="site-actions">
         <LangSwitch /><ThemeSwitch />
         {user ? <>
@@ -48,5 +46,5 @@ export function SiteHeader({ workspace = false, landing = false, network, mock =
 
 export function SiteFooter() {
   const { tr } = useLang()
-  return <footer className="site-footer"><Link className="site-brand" to="/">Countersign<span className="brand-point">.</span></Link><span>© 2026 Countersign · {tr('Your rules. Every payment.', '每笔付款，遵循你的规则。')}</span><Link to="/inbox">{tr('Open workspace', '进入工作台')} →</Link></footer>
+  return <footer className="site-footer"><Link className="site-brand" to="/"><img src="/countersign-logo.png" alt="Countersign" className="brand-logo" /></Link><span>© 2026 Countersign · {tr('Your rules. Every payment.', '每笔付款，遵循你的规则。')}</span><Link to="/inbox">{tr('Open workspace', '进入工作台')} →</Link></footer>
 }

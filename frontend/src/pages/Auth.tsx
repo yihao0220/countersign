@@ -55,7 +55,7 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
   const fieldError = (key: string) => errors[key] && <p id={key + '-error'} className="auth-field-error">{errors[key]}</p>
   return <div className="public-site"><SiteHeader />
     <main className="auth-main" tabIndex={-1}>
-      <div className="auth-intro"><p className="mono-label">// {tr('YOUR RULES. EVERY PAYMENT.', '每笔付款，你来定规则。')}</p><h1>{tr('Give your AI', '让你的 AI')}<br /><span>{tr('room to work.', '放手工作。')}</span><br />{tr('Keep control.', '让权限有边界。')}</h1><p>{tr('A workspace for agent payments, built around the people and policies behind them.', '一个围绕人与规则构建的 Agent 付款工作台。')}</p>
+      <div className="auth-intro"><p className="mono-label">// {tr('YOUR RULES. EVERY PAYMENT.', '每笔付款，你来定规则。')}</p><h1>{tr('AI checks the invoice.', 'AI 审票。')}<br /><span>{tr('The contract calls the shots.', '合约拍板。')}</span></h1><p>{tr('AI checks invoices. Your contract enforces your payment rules.', 'AI 检查发票，智能合约按你设定的规则放行或拒付。')}</p>
         <div className="auth-flow"><div className="mono-label">{tr('THE PAYMENT WORKFLOW', '付款流程')}</div>{[
           [tr('Agent requests', 'Agent 提出付款'), tr('Invoice and payment details', '发票与付款信息')],
           [tr('Rules check', '检查付款规则'), tr('Supplier, purchase order and limits', '供应商、采购单与额度')],
