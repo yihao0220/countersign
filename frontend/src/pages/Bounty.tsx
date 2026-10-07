@@ -31,6 +31,7 @@ export default function BountyPage() {
           <p className="eyebrow"><Icon name="shield" size={15} />{tr("THE COUNTERSIGN CHALLENGE", "会签挑战")}</p>
           <h1 className="cond keep text-[2.6rem] font-extrabold leading-[1.08] sm:text-[3.4rem]">{t.hero}</h1>
           <p className="mt-4 max-w-[34rem] text-[1.02rem] text-ink2">{t.hero_sub}</p>
+          {config.data?.network === 'local' && <p className="mt-3 border-l-2 border-jade pl-2.5 text-sm text-ink2">{tr('Local demonstration with virtual funds and deterministic test rules. No live AI service or prize payout is connected.', '本机演示使用虚拟资金和确定性测试规则，尚未接入真实 AI 服务或奖品发放。')}</p>}
           {testnet && (
             <p className="mt-3 inline-block border-l-2 border-cinnabar pl-2.5 text-sm text-ink">
               {lang === 'zh' ? '这个挑战跑在 BOT Chain 测试网上，金库里是没有真实价值的测试代币。' : 'This challenge runs on BOT Chain testnet. The vault holds test tokens with no real value.'}

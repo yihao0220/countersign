@@ -246,7 +246,7 @@ function Controls({ config, signer, banner }: { config: AppConfig; signer: Signe
   const run = useCallback(
     async (key: string, a: Action, done?: () => void) => {
       setBusy(key)
-      setStatus({ tone: 'wait', text: api.mode === 'mock' ? tr('Working…', '处理中…') : tr('Confirm in your wallet…', '请在钱包里确认…') })
+      setStatus({ tone: 'wait', text: api.mode === 'mock' ? tr('Working…', '处理中…') : config.network === 'local' ? tr('Sending a local test transaction…', '正在发送本地测试交易…') : tr('Confirm in your wallet…', '请在钱包里确认…') })
       try {
         const hash = await signer.act(a, (h) => setStatus({ tone: 'wait', text: tr('Sent. Waiting for the block…', '已发送，等待出块…'), hash: h }))
         setStatus({ tone: 'ok', text: api.mode === 'mock' ? tr('Done (simulated).', '完成（模拟）。') : tr('Confirmed on-chain.', '已上链确认。'), hash: hash || undefined })
@@ -260,7 +260,7 @@ function Controls({ config, signer, banner }: { config: AppConfig; signer: Signe
         void qc.invalidateQueries({ queryKey: ['ledger'] })
       }
     },
-    [signer, qc, tr],
+    [signer, qc, tr, config.network],
   )
 
   const r = reg.data
@@ -311,7 +311,7 @@ function Controls({ config, signer, banner }: { config: AppConfig; signer: Signe
             </div>
           </section>
 
-          <Agents reg={r} owner={owner} busy={busy} run={run} waitText={waitText} />
+          <Agents reg={r} owner={owner} busy={busy} run={run} waitText={waitText} symbol={symbol} />
 
           <Pending reg={r} symbol={symbol} canSend={signer.canSend} isOwner={owner} busy={busy} run={run} />
 
@@ -661,7 +661,7 @@ function DailyCap({ reg, owner, busy, run, waitText, symbol }: PanelProps & { sy
   )
 }
 
-function Agents({ reg, owner, busy, run, waitText }: PanelProps) {
+function Agents({ reg, owner, busy, run, waitText, symbol }: PanelProps & { symbol: string }) {
   const { tr } = useLang()
   const [a, setA] = useState('')
   const agents = reg.agents ?? []
@@ -673,7 +673,7 @@ function Agents({ reg, owner, busy, run, waitText }: PanelProps) {
           <div className="agent-summary"><span className={`agent-avatar ${g.label}`}><Icon name={g.label === 'guarded' ? 'shield' : 'agents'} /></span><div className="flex-1"><h3 className="text-sm font-semibold">{g.label === 'guarded' ? tr('Guarded agent', '带防护的 Agent') : g.label === 'naive' ? tr('Naive agent', '裸奔 Agent') : String(g.label)}</h3><span className="soft-tag mt-1">{g.active ? tr('Authorized key', '已授权密钥') : tr('Revoked', '已撤销')}</span></div></div>
           <p className="mb-1 mt-5 text-xs text-ink2">{tr('Wallet address', '钱包地址')}</p>
           <Address value={g.address} lead={10} tail={8} className={g.active ? '' : 'line-through'} />
-          <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-rule pt-4"><div><p className="text-xs text-ink2">{tr('Gas balance', '手续费余额')}</p><p className="mt-1 font-mono text-sm">{g.balance != null ? `${fmtAmount(g.balance)} BOT` : '—'}</p><p className="mt-1 text-xs text-ink2">{g.gas === 'sponsored' ? tr('Sponsored gas (configured)', '配置为代付手续费') : g.gas === 'self' ? tr('Pays its own gas', '自付手续费') : tr('Gas mode unavailable', '手续费模式暂无数据')}</p></div>
+          <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-rule pt-4"><div><p className="text-xs text-ink2">{tr('Gas balance', '手续费余额')}</p><p className="mt-1 font-mono text-sm">{g.balance != null ? `${fmtAmount(g.balance)} ${symbol}` : '—'}</p><p className="mt-1 text-xs text-ink2">{g.gas === 'sponsored' ? tr('Sponsored gas (configured)', '配置为代付手续费') : g.gas === 'self' ? tr('Pays its own gas', '自付手续费') : tr('Gas mode unavailable', '手续费模式暂无数据')}</p></div>
           {g.active && <button type="button" className="btn btn-cinnabar px-3 py-2 text-xs" disabled={!owner || busy !== null} onClick={() => run(`revoke-${g.address}`, { type: 'revokeAgent', agent: g.address })}>{tr('Revoke', '撤销')} <Tag kind="now" /></button>}</div>
           {g.label === 'naive' && <p className="mt-4 text-xs text-ink2">{tr('Deliberately unguarded for comparison. The vault still enforces its rules.', '故意不设防以作对照，金库仍执行规则。')}</p>}
         </li>)}

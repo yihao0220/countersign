@@ -14,6 +14,7 @@ export async function localOwnerAction(config: AppConfig, action: { type: string
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action),
   })
   const body = await response.json()
+  if (response.status === 401) window.dispatchEvent(new Event('countersign-session-expired'))
   if (!response.ok) throw new Error(body.detail ?? '本地操作未完成')
   return body.hash as string
 }

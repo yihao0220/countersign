@@ -4,8 +4,6 @@ export type Theme = 'light' | 'dark'
 const KEY = 'cs_theme'
 const BAR = { light: '#ffffff', dark: '#09090b' }
 
-const media = () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null)
-
 function saved(): Theme | null {
   try {
     const v = localStorage.getItem(KEY)
@@ -21,17 +19,11 @@ function apply(t: Theme) {
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', BAR[t]))
 }
 
-/** The current theme: the saved choice if there is one, otherwise whatever the system uses. */
+/** Match the reference's light first visit; retain an explicit saved choice. */
 export function useTheme(): [Theme, (t: Theme) => void] {
-  const [theme, setThemeState] = useState<Theme>(() => saved() ?? (media()?.matches ? 'dark' : 'light'))
+  const [theme, setThemeState] = useState<Theme>(() => saved() ?? 'light')
 
-  useEffect(() => {
-    const m = media()
-    if (!m || saved()) return
-    const on = (e: MediaQueryListEvent) => setThemeState(e.matches ? 'dark' : 'light')
-    m.addEventListener?.('change', on)
-    return () => m.removeEventListener?.('change', on)
-  }, [])
+  useEffect(() => apply(theme), [theme])
 
   const setTheme = (t: Theme) => {
     setThemeState(t)

@@ -5,6 +5,9 @@ import { ServerBanner } from './components/ServerBanner'
 import { isServerProblem, markServer } from './lib/net'
 import { LangProvider } from './i18n'
 import BountyPage from './pages/Bounty'
+import LandingPage from './pages/Landing'
+import AuthPage from './pages/Auth'
+import { AuthProvider, RequireAuth } from './lib/auth'
 
 // The bounty page is what phones open from the QR code, so it ships in the main bundle.
 // Everything else loads on demand; Controls carries wagmi and viem.
@@ -33,16 +36,20 @@ export default function App() {
         <ServerBanner />
         {/* hash routes: the server never needs an SPA fallback, and links survive WeChat's in-app browser */}
         <HashRouter>
+          <AuthProvider>
           <Suspense fallback={<Loading />}>
             <Routes>
-              <Route path="/" element={<Navigate to="/bounty" replace />} />
-              <Route path="/bounty" element={<BountyPage />} />
-              <Route path="/ledger" element={<LedgerPage />} />
-              <Route path="/inbox" element={<InboxPage />} />
-              <Route path="/controls" element={<ControlsPage />} />
-              <Route path="*" element={<Navigate to="/bounty" replace />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<AuthPage />} />
+              <Route path="/signup" element={<AuthPage register />} />
+              <Route path="/bounty" element={<RequireAuth><BountyPage /></RequireAuth>} />
+              <Route path="/ledger" element={<RequireAuth><LedgerPage /></RequireAuth>} />
+              <Route path="/inbox" element={<RequireAuth><InboxPage /></RequireAuth>} />
+              <Route path="/controls" element={<RequireAuth><ControlsPage /></RequireAuth>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
+          </AuthProvider>
         </HashRouter>
       </LangProvider>
     </QueryClientProvider>

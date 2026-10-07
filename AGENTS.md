@@ -2,12 +2,14 @@
 
 ## 接续与范围
 
+- 2026-10-07 最新范围：用户明确要求并确认首页 → 附件的登录/注册 → 现有工作台，三段统一采用 os.virtuals.io 视觉。此次改版覆盖下方旧的“界面原样”限制；详见 docs/SITE_ACCESS.md。复用 auth/server.mjs，在新版 local.sh 启动时配置后台会话检查，账户不等于生产 Owner 角色。用户随后明确授权提交并推送本轮代码；仍不自动重启旧链、不部署公网。
+
 - 先读 `docs/STATUS.md`，再按当前任务读 README 和相关源码，不默认从历史选题继续。
 - 当前为第一版本地整合：入口 `./local.sh`，详情 `docs/LOCAL_TEST.md`。只有 Anvil 31337 和回环服务；不自动转公链或公网。
 - 2026-10-07 用户明确：只连接前后端、补本次联调缺失接口；页面布局与既有文案保持原样，允许改接口和本地网络配置。不要继续前端改版。随后用户明确授权补供应商新增/停用、采购单新增/关闭、提款并回复“继续”；以此新范围为准。
 - 合约仍用 CountersignDemo；前端本地适配经 backend/app/api/local.py / chain/local.py 调用实际 Demo ABI，不能发送上游另一个合约的 ABI 或套用其拒付枚举。
 - 本地控制使用 Anvil 无价值解锁账户；不保存私钥。AI 测试规则必须标注，不把文件上传等同于识别完成。
-- 集成验证 `.venv/bin/python -m pytest -q backend/tests`；前端 `pnpm run typecheck`、`pnpm run build`。运行状态、依赖、上传与数据库留在忽略目录。
+- 集成验证 `.venv/bin/python -m pytest -q backend/tests`；前端 `pnpm run typecheck`、`pnpm run check:interface`、`pnpm run check:controls`、`pnpm run build`。运行状态、依赖、上传与数据库留在忽略目录。
 - 本项目是本地教学与开发起点，核心源码为 `contracts/src/CountersignDemo.sol`；不等同于团队完整比赛金库。
 - 用户负责智能合约，交流一次只讲一个概念或推进一个小任务；不要把听懂、亲自运行和独立实现混为一谈。
 - 2026-10-06 六个演示均已有用户运行通过记录；已完成 `docs/PDF_ALIGNMENT.md`。2026-10-07 已授权并完成供应商/采购单/提款扩展，当前见 docs/REGISTRY_TEST.md。
@@ -41,6 +43,7 @@
 - 用户已确认第六项设计。函数/事件/查询见 docs/CONTRACT_INTERFACE.md；ABI 从实际 Demo 构建产物生成，不再使用上游 Countersign ABI。contracts/interface/block-reasons.json 是中英文拒付定义共享来源，枚举 0–13 保持不变。
 - lowerPOBudget / queue-RaisePOBudget 支持任意 PO，pending 统一包含 po_id。PO-101 新旧事件在列表/账本合并，原始回执完整保留。
 - registry 的周期和历史字段按同一区块读取。reason_code：Paid=0，Blocked=1–13，治理=null；未知编码显式报接口不匹配。
+- 等待按钮以后台链上 ready 为准，并随查询更新；本机倒计时仅显示，不能授予执行权限。发送前读取当前连接和网络；execute 保留公共执行，其他管理操作需 Owner。子表单断开后不得继续提交；这些页面约束不等于生产后端认证。
 - ./test.sh interface-demo 是隔离 Anvil 的 HTTP 演示。前端 node scripts/abi.mjs 生成 ABI/拒付常量；node scripts/check-interface.mjs 验证现有页面映射。新增/改接口后运行后端测试和前端检查，不把这些证据当作浏览器点击、钱包签名或公链验收。
 
 ## Agent 权限
@@ -72,6 +75,7 @@
 
 - 用户已回复“继续”确认第七项设计，实施见 docs/INITIALIZATION.md。默认 local.sh start 保留预置；start-empty 真空部署，两轮时间锁后核对状态才启动服务。
 - 同模式复用，另一模式运行时拒绝切换，不自动停止/重启用户链；初始化失败不写 ready，停止本次子进程，不启动页面。新启动不是升级或迁移。
+- 管理进程按 Python 脚本角色、serve 与完整运行编号识别；父目录改名不要求旧启动路径等于新绝对路径，不以任意命令子串判断。修改代码或上传 GitHub 不自动重启已有链。
 - PO-101 只允许一次性，周期预算使用其他 ID；空模式创建前其兼容字段为零，创建时才设置。poExpiry 为存储字段，但仅创建时赋值，不可延期或复用编号。
 - 本机 Anvil 初始时钟偏移与模拟等待匹配（demo 120 / empty 240 秒），后续新申请完整等待 120 秒。只允许 http://127.0.0.1 的 Anvil 31337，不保存/输出私钥。
 - init-demo 为合约验收；init-script-demo 为独立 Anvil 的真实部署/回执与进程内 HTTP 验收，不能冒充完整页面、钱包签名、公链或审计证据。

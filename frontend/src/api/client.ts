@@ -108,7 +108,8 @@ async function request<T>(path: string, init: RequestInit = {}, admin = false): 
       body.message_zh ?? '提交太频繁了，请等一分钟再试。',
     )
   }
-  if (res.status === 401 || res.status === 403) throw new AuthError('Admin token rejected')
+  if (res.status === 401) window.dispatchEvent(new Event('countersign-session-expired'))
+  if (res.status === 401 || res.status === 403) throw new AuthError('Access rejected')
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} on ${path}`)
   return res.json() as Promise<T>
 }

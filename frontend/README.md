@@ -1,3 +1,11 @@
+# Countersign frontend（当前本地版）
+
+2026-10-07 当前版本已增加首页、登录和注册，工作台采用参考站的白底/绿色卡片与横向导航。以 [当前页面指南](../docs/SITE_ACCESS.md) 为准；下方上游 README 的公开页面、任意 token、注入钱包、公链和无后端 mock 启动描述属于历史参考，不是当前版本的运行说明。
+
+当前从项目根目录 `./local.sh start` 启动四个回环服务，在 http://127.0.0.1:5173/ 注册/登录后使用工作台。即使 `VITE_API_MODE=mock`，页面登录仍需 Node 认证服务；模拟业务不代表真实合约或 AI。默认浅色，保留手动主题和桌面语言切换。Manrope 与 Geist Mono 均本地提供。
+
+## 上游 README（历史参考）
+
 > 2026-10-06 redesign: the approved SpendMate references now inform the sidebar, dark/light surfaces, metric cards, agent wallets and activity layout. Four routes, owner actions and API shapes remain. See [design/provenance/checks](../docs/FRONTEND_REDESIGN.md). Ledger agent summaries are a bounded event view; full public reputation and live API wiring remain pending.
 
 # Countersign frontend

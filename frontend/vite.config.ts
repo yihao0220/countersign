@@ -8,7 +8,10 @@ export default defineConfig({
   base: './',
   server: {
     port: 5173,
-    proxy: { '/api': 'http://localhost:8000' },
+    proxy: {
+      '^/api/(login|register|me|logout|auth-health)$': process.env.COUNTERSIGN_AUTH_URL || 'http://127.0.0.1:3000',
+      '/api': process.env.COUNTERSIGN_BACKEND_URL || 'http://127.0.0.1:8000',
+    },
   },
   build: {
     outDir: 'dist',

@@ -122,7 +122,7 @@ export default function LedgerPage() {
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>
             <h1 className="cond text-[2.4rem] font-extrabold leading-tight sm:text-[2.9rem]">{t.ledger_title}</h1>
-            <p className="max-w-[38rem] text-ink2">{t.ledger_sub}</p>
+            <p className="max-w-[38rem] text-ink2">{config.data?.network === 'local' ? tr('Every payment, blocked request and policy change recorded by the local Anvil vault.', '本机 Anvil 金库记录的每笔付款、拒付和规则变更。') : t.ledger_sub}</p>
           </div>
           {config.data && <ContractLine config={config.data} />}
         </div>
@@ -173,7 +173,7 @@ export default function LedgerPage() {
 
 function ContractLine({ config }: { config: AppConfig }) {
   const { tr } = useLang()
-  const net = config.network === 'mainnet' ? tr('BOT Chain mainnet', 'BOT Chain 主网') : tr('BOT Chain testnet', 'BOT Chain 测试网')
+  const net = config.network === 'local' ? tr('Local Anvil', '本机 Anvil') : config.network === 'mainnet' ? tr('BOT Chain mainnet', 'BOT Chain 主网') : tr('BOT Chain testnet', 'BOT Chain 测试网')
   return (
     <p className="text-sm text-ink2">
       {net} ({config.chain_id}), {tr('contract', '合约')}{' '}
@@ -214,7 +214,7 @@ function QrCard({ url, big = false, qrSize }: { url: string; big?: boolean; qrSi
 /** Marks rows from the other network when bounty and team transactions live on different chains. */
 function NetTag({ net }: { net: 'mainnet' | 'testnet' | 'local' }) {
   const { tr } = useLang()
-  return <span className="ml-1.5 rounded-[2px] border border-dashed border-ink2 px-1 py-px text-[0.7rem] text-ink2">{net === 'testnet' ? tr('testnet', '测试网') : tr('mainnet', '主网')}</span>
+  return <span className="ml-1.5 rounded-[2px] border border-dashed border-ink2 px-1 py-px text-[0.7rem] text-ink2">{net === 'local' ? tr('local', '本机') : net === 'testnet' ? tr('testnet', '测试网') : tr('mainnet', '主网')}</span>
 }
 
 function EventsTable({ events, loading, symbol, netOf }: { events?: LedgerEvent[]; loading: boolean; symbol: string; netOf?: 'mainnet' | 'testnet' | 'local' }) {

@@ -3,6 +3,8 @@ import { shortAddr } from '../lib/format'
 import { useLang } from '../i18n'
 import { api, setAdminToken, getAdminToken } from '../api/client'
 import type { EvalResults } from '../api/types'
+import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '../lib/auth'
 
 export function Address({ value, lead = 6, tail = 4, className = '' }: { value?: string | null; lead?: number; tail?: number; className?: string }) {
   const { t } = useLang()
@@ -59,8 +61,13 @@ export function Countdown({ to, onDone }: { to: string; onDone?: () => void }) {
 
 export function AdminGate({ children }: { children: ReactNode }) {
   const { t, tr } = useLang()
+  const { user } = useAuth()
+  const config = useQuery({ queryKey: ['config'], queryFn: api.config, staleTime: 60_000 })
   const [token, setToken] = useState(getAdminToken() ?? '')
   const [ok, setOk] = useState(!!getAdminToken())
+  // In the local shared demo, the server checks the workspace session. Owner
+  // operations still require the separate connected local account in Controls.
+  if (user && config.data?.network === 'local') return <>{children}</>
   if (ok) return <>{children}</>
   return (
     <main tabIndex={-1} className="mx-auto mt-16 max-w-md rounded-box border border-rule bg-field p-6">

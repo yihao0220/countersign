@@ -16,7 +16,7 @@ export default {
         jade: 'var(--jade)',
       },
       fontFamily: {
-        sans: ['"Geist Variable"', '"PingFang SC"', '"Noto Sans SC"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'],
+        sans: ['Manrope', '"PingFang SC"', '"Noto Sans SC"', '"Microsoft YaHei"', 'sans-serif'],
         mono: ['"Geist Mono Variable"', 'ui-monospace', 'SF Mono', 'monospace'],
       },
       borderRadius: { box: '8px' },

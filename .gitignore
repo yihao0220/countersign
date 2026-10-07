@@ -13,6 +13,7 @@ logs/
 *.sqlite*
 *.db*
 sessions/
+auth/data/
 session-dump*
 .DS_Store
 

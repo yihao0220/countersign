@@ -13,6 +13,15 @@ def create_app(data_dir=None):
     app.state.db = Database(root / "backend.sqlite3")
     app.state.upload_dir = root / "uploads"
     app.include_router(router)
+    auth_url = os.environ.get('COUNTERSIGN_AUTH_URL')
+    if auth_url:
+        from app.workspace_auth import install_workspace_auth
+        install_workspace_auth(app, auth_url)
+
+    @app.get('/health')
+    def health():
+        return {'ok': True, 'workspace_auth': bool(auth_url)}
+
     manifest = os.environ.get('COUNTERSIGN_LOCAL_MANIFEST')
     if manifest:
         from app.chain.local import LocalChain

@@ -170,7 +170,7 @@ def serve(run_id, mode='demo'):
     signal.signal(signal.SIGTERM,stop)
     signal.signal(signal.SIGINT,stop)
     try:
-        for p in (8545,8000,5173): available(p)
+        for p in (8545,8000,5173,3000): available(p)
         anvil=ROOT/'.tools/anvil'
         node=shutil.which('node') or (str(NODE_FALLBACK) if NODE_FALLBACK.exists() else None)
         vite=ROOT/'frontend/node_modules/vite/bin/vite.js'
@@ -181,17 +181,23 @@ def serve(run_id, mode='demo'):
         manifest=deploy('http://127.0.0.1:8545',run_id,mode=mode)
         manifest_path=run/'chain.json'
         manifest_path.write_text(json.dumps(manifest,indent=2))
-        env=dict(os.environ,COUNTERSIGN_LOCAL_MANIFEST=str(manifest_path),BACKEND_DATA_DIR=str(run/'data'),VITE_API_MODE='live')
+        env=dict(os.environ,COUNTERSIGN_LOCAL_MANIFEST=str(manifest_path),BACKEND_DATA_DIR=str(run/'data'),VITE_API_MODE='live',
+                 COUNTERSIGN_AUTH_URL='http://127.0.0.1:3000',COUNTERSIGN_BACKEND_URL='http://127.0.0.1:8000',
+                 APP_ORIGIN='http://127.0.0.1:5173',HOST='127.0.0.1',PORT='3000',SECURE_COOKIES='false',DATA_DIR=str(STATE/'accounts'))
         for key in ['HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','http_proxy','https_proxy','all_proxy']: env.pop(key,None)
         env['NO_PROXY']='127.0.0.1,localhost'
         env['NODE_OPTIONS']='--dns-result-order=ipv4first'
         backend_log=(run/'backend.log').open('w')
         frontend_log=(run/'frontend.log').open('w')
+        auth_log=(run/'auth.log').open('w')
+        children.append(subprocess.Popen([node,str(ROOT/'auth/server.mjs')],cwd=ROOT/'auth',env=env,stdout=auth_log,stderr=subprocess.STDOUT))
         children.append(subprocess.Popen([sys.executable,'-m','uvicorn','app.main:app','--host','127.0.0.1','--port','8000'],cwd=ROOT/'backend',env=env,stdout=backend_log,stderr=subprocess.STDOUT))
         children.append(subprocess.Popen([node,str(vite),'--host','127.0.0.1','--port','5173','--strictPort','--mode','integration'],cwd=ROOT/'frontend',env=env,stdout=frontend_log,stderr=subprocess.STDOUT))
-        wait_for(lambda: json.load(urllib.request.urlopen('http://127.0.0.1:5173/api/config',timeout=2))['run_id']==run_id,children)
+        wait_for(lambda: json.load(urllib.request.urlopen('http://127.0.0.1:3000/api/auth-health',timeout=2))['ok'],children)
+        wait_for(lambda: json.load(urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=2))['workspace_auth'],children)
+        wait_for(lambda: urllib.request.urlopen('http://127.0.0.1:5173/',timeout=2).status == 200,children)
         (run/'ready').write_text('ready\n')
-        print('本地测试版已启动：http://127.0.0.1:5173/#/inbox',flush=True)
+        print('本地测试版已启动：http://127.0.0.1:5173/ （首页 → 登录 → 工作台）',flush=True)
         while all(c.poll() is None for c in children): time.sleep(.5)
         raise RuntimeError('一个本地服务已退出，正在停止本次其余服务')
     except KeyboardInterrupt: pass
@@ -217,27 +223,32 @@ def main():
         else: print('本项目没有正在运行的本地服务')
         return
     if command=='status':
-        print('运行中：http://127.0.0.1:5173/#/inbox' if meta and running(meta) and (STATE/meta['run_id']/'ready').exists() else '未运行')
+        print('运行中：http://127.0.0.1:5173/' if meta and running(meta) and (STATE/meta['run_id']/'ready').exists() else '未运行')
+        if meta and running(meta) and not meta.get('workspace_auth'):
+            print('当前为旧实例，尚未加载本次登录服务；不会自动重启或清空现有链。')
         return
     if command not in ('start','start-empty'): raise RuntimeError('用法：./local.sh start|start-empty|stop|status')
     mode = 'empty' if command == 'start-empty' else 'demo'
     if meta and running(meta):
         if meta.get('initialization_mode','demo') != mode:
             raise RuntimeError('已有另一种初始化模式正在运行；如需切换，请先自行运行 ./local.sh stop。不会自动停止当前链。')
-        print('已运行：http://127.0.0.1:5173/#/inbox'); return
-    for p in (8545,8000,5173): available(p)
+        print('已运行：http://127.0.0.1:5173/')
+        if not meta.get('workspace_auth'):
+            print('旧实例未加载登录服务；请先保存需要的演示结果，再自行 stop/start。新启动会创建新链。')
+        return
+    for p in (8545,8000,5173,3000): available(p)
     run_id=time.strftime('%Y%m%d-%H%M%S')+'-'+uuid4().hex[:8]
     run=STATE/run_id
     run.mkdir()
     with (run/'runtime.log').open('w') as log:
         child=subprocess.Popen([sys.executable,str(Path(__file__).resolve()),'serve',run_id,mode],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
-    CURRENT.write_text(json.dumps({'pid':child.pid,'run_id':run_id,'initialization_mode':mode}))
+    CURRENT.write_text(json.dumps({'pid':child.pid,'run_id':run_id,'initialization_mode':mode,'workspace_auth':True}))
     try: wait_for(lambda:(run/'ready').exists(),[child],timeout=45)
     except Exception:
         if child.poll() is None: child.terminate()
         raise RuntimeError(f'启动未成功，请查看 {run}/runtime.log 和 backend.log') from None
     if mode == 'empty': print('模式：从空金库完成时间锁初始化；两轮等待由 Anvil 模拟。')
-    print('本地测试版：http://127.0.0.1:5173/#/inbox\n停止：./local.sh stop\n仅本机 Anvil，未连接公链；本次启动使用全新测试账本。')
+    print('本地测试版：http://127.0.0.1:5173/\n流程：首页 → 注册/登录 → 工作台\n停止：./local.sh stop\n仅本机 Anvil，未连接公链；本次启动使用全新测试账本。')
 
 if __name__=='__main__':
     try: main()
