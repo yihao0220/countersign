@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth'
 import { useLang } from '../i18n'
 import { LangSwitch, ThemeSwitch } from './Toggles'
 
-export function SiteHeader({ workspace = false, network, mock = false }: { workspace?: boolean; network?: string; mock?: boolean }) {
+export function SiteHeader({ workspace = false, landing = false, network, mock = false }: { workspace?: boolean; landing?: boolean; network?: string; mock?: boolean }) {
   const { user, logout } = useAuth()
   const { tr } = useLang()
   const navigate = useNavigate()
@@ -18,7 +18,9 @@ export function SiteHeader({ workspace = false, network, mock = false }: { works
   }
   const links = workspace
     ? [['/inbox', tr('Inbox', '发票工作台')], ['/ledger', tr('Ledger', '账本')], ['/controls', tr('Controls', '管理控制台')], ['/bounty', tr('Challenge', '挑战防线')]]
-    : [['/?section=workflow', tr('How it works', '工作流程')], ['/?section=stack', tr('Building blocks', '核心能力')], ['/inbox', tr('Workspace', '工作台')]]
+    : landing
+      ? [['/?section=workflow', tr('Quickstart', '快速开始')], ['/?section=suppliers', tr('Suppliers', '供应商')], ['/?section=orders', tr('Purchase orders', '采购单')], ['/?section=payments', tr('Payments', '付款')], ['/?section=activity', tr('Activity', '记录')]]
+      : [['/?section=workflow', tr('How it works', '工作流程')], ['/?section=stack', tr('Building blocks', '核心能力')], ['/inbox', tr('Workspace', '工作台')]]
   return <header className="site-header">
     <div className="site-topbar">
       <Link to="/" className="site-brand" aria-label="Countersign 首页">Countersign<span className="brand-point">.</span></Link>
