@@ -74,6 +74,8 @@
 
 ## 新电脑安装
 
+完整下载、依赖安装、自己注册账户及 Owner 测试身份步骤见 [队友测试指南](TEAM_TEST.md)。Windows 使用 WSL2；每台电脑建立独立本地实例，不共享作者的账户、余额或账本。
+
 需要 Python 3.11+、Node、pnpm，以及 Foundry 的 Forge/Anvil；本机验证使用 Python 3.12、Foundry 1.7.1、Solidity 0.8.30。
 
 ```bash

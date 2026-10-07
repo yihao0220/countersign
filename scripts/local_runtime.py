@@ -156,9 +156,100 @@ def running(meta):
     # Parent directories can be renamed while this process is alive. Match the
     # Python supervisor's exact role and run ID, never an arbitrary substring.
     command = (r'(?:.+/)?python(?:\d+(?:\.\d+)*)?\s+'
-               r'.+/scripts/local_runtime\.py\s+serve\s+' + re.escape(run_id)
-               + r'(?:\s+(?:demo|empty))?')
+               r'.+/scripts/local_runtime\.py\s+(?:serve\s+' + re.escape(run_id)
+               + r'(?:\s+(?:demo|empty))?|recover-frontend\s+' + re.escape(run_id) + r')')
     return result.returncode == 0 and re.fullmatch(command, result.stdout.strip()) is not None
+
+
+def finish_frontend_recovery(original_pid, children):
+    """Only an explicit stop hands shutdown back to the original supervisor."""
+    for child in children:
+        if child.poll() is None: child.terminate()
+    for child in children:
+        try: child.wait(timeout=5)
+        except subprocess.TimeoutExpired: child.kill(); child.wait()
+    # SIGTERM stays pending while stopped; resuming lets its original finally
+    # close the unchanged backend and Anvil in their usual order.
+    os.kill(original_pid, signal.SIGTERM)
+    os.kill(original_pid, signal.SIGCONT)
+
+
+def recover_frontend(run_id):
+    """Bridge a renamed checkout's old supervisor without resetting its chain."""
+    meta = json.loads(CURRENT.read_text())
+    if meta['run_id'] != run_id or meta.get('frontend_recovered') or not running(meta):
+        raise RuntimeError('原实例不匹配；不会操作其他进程')
+    original_pid = meta['pid']
+    result = subprocess.run(['ps','-axo','pid=,ppid=,command='],capture_output=True,text=True,check=True)
+    frontend = []
+    roles = set()
+    for line in result.stdout.splitlines():
+        fields = line.strip().split(None, 2)
+        if len(fields) != 3 or fields[1] != str(original_pid): continue
+        pid, _, command = fields
+        if re.fullmatch(r'.+/node\s+.+/frontend/node_modules/vite/bin/vite\.js\s+--host 127\.0\.0\.1 --port 5173 --strictPort --mode integration', command):
+            frontend.append(int(pid)); roles.add('frontend')
+        elif re.fullmatch(r'.+/anvil\s+.*', command): roles.add('anvil')
+        elif re.fullmatch(r'.+/python\s+-m uvicorn app\.main:app --host 127\.0\.0\.1 --port 8000', command): roles.add('backend')
+        else: raise RuntimeError('原实例包含未知子进程；不会替换')
+    if roles != {'frontend','backend','anvil'} or len(frontend) != 1:
+        raise RuntimeError('原实例服务不完整；不会替换')
+    available(3000)
+    node = shutil.which('node') or str(NODE_FALLBACK)
+    run = STATE / run_id
+    account_dir = STATE / 'zip-ui-preview/accounts'
+    if not (account_dir / 'users.json').is_file():
+        raise RuntimeError('找不到原注册账户；不会创建空账户库')
+    env = dict(os.environ, VITE_API_MODE='live', HOST='127.0.0.1', PORT='3000',
+               APP_ORIGIN='http://127.0.0.1:5173', SECURE_COOKIES='false', DATA_DIR=str(account_dir),
+               COUNTERSIGN_AUTH_URL='http://127.0.0.1:3000', COUNTERSIGN_BACKEND_URL='http://127.0.0.1:8000',
+               COUNTERSIGN_VITE_CACHE=str(run / 'vite-cache-5173'))
+    for key in ['HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','http_proxy','https_proxy','all_proxy']: env.pop(key,None)
+    env['NO_PROXY'] = '127.0.0.1,localhost'
+    env['NODE_OPTIONS'] = '--dns-result-order=ipv4first'
+    children = []
+    stopping = False
+    def stop(*_):
+        nonlocal stopping
+        stopping = True
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    os.kill(original_pid, signal.SIGSTOP)
+    # The bridge now owns stop/status; the original supervisor still owns the
+    # chain/backend. Its exit watcher must remain suspended during replacement.
+    meta.update(pid=os.getpid(), original_pid=original_pid, frontend_recovered=True,
+                auth_data_dir=str(account_dir), workspace_auth=False)
+    CURRENT.write_text(json.dumps(meta))
+    try:
+        os.kill(frontend[0], signal.SIGTERM)
+        def frontend_exited():
+            status = subprocess.run(['ps','-p',str(frontend[0]),'-o','stat='],capture_output=True,text=True)
+            return status.returncode != 0 or status.stdout.strip().startswith('Z')
+        wait_for(frontend_exited, timeout=10)
+        with (run/'frontend-recovery.log').open('a') as log:
+            commands = [([node,str(ROOT/'auth/server.mjs')], ROOT/'auth'),
+                        ([node,str(ROOT/'frontend/node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port','5173','--strictPort','--mode','integration'], ROOT/'frontend')]
+            while not stopping:
+                try:
+                    for index, (command, cwd) in enumerate(commands):
+                        if index >= len(children): children.append(subprocess.Popen(command,cwd=cwd,env=env,stdout=log,stderr=subprocess.STDOUT))
+                        elif children[index].poll() is not None: children[index] = subprocess.Popen(command,cwd=cwd,env=env,stdout=log,stderr=subprocess.STDOUT)
+                    wait_for(lambda: json.load(urllib.request.urlopen('http://127.0.0.1:5173/api/auth-health',timeout=2))['ok'],children,timeout=10)
+                    (run/'ready').write_text('ready\n')
+                except Exception as error:
+                    (run/'ready').unlink(missing_ok=True)
+                    print(f'网页恢复尚未就绪：{error}；原链和后台保留',flush=True)
+                # Retry only UI/auth, never deploy or restart the original chain.
+                for _ in range(20):
+                    if stopping: break
+                    time.sleep(.5)
+    except Exception as error:
+        (run/'ready').unlink(missing_ok=True)
+        print(f'网页恢复失败：{error}；原链和后台保留，等待明确停止',flush=True)
+        while not stopping: time.sleep(.5)
+    finally:
+        finish_frontend_recovery(original_pid, children)
+        (run/'ready').unlink(missing_ok=True)
 
 
 def serve(run_id, mode='demo'):
@@ -181,9 +272,11 @@ def serve(run_id, mode='demo'):
         manifest=deploy('http://127.0.0.1:8545',run_id,mode=mode)
         manifest_path=run/'chain.json'
         manifest_path.write_text(json.dumps(manifest,indent=2))
+        account_dir = json.loads(CURRENT.read_text()).get('auth_data_dir', str(STATE/'accounts')) if CURRENT.exists() else str(STATE/'accounts')
         env=dict(os.environ,COUNTERSIGN_LOCAL_MANIFEST=str(manifest_path),BACKEND_DATA_DIR=str(run/'data'),VITE_API_MODE='live',
                  COUNTERSIGN_AUTH_URL='http://127.0.0.1:3000',COUNTERSIGN_BACKEND_URL='http://127.0.0.1:8000',
-                 APP_ORIGIN='http://127.0.0.1:5173',HOST='127.0.0.1',PORT='3000',SECURE_COOKIES='false',DATA_DIR=str(STATE/'accounts'))
+                 APP_ORIGIN='http://127.0.0.1:5173',HOST='127.0.0.1',PORT='3000',SECURE_COOKIES='false',
+                 DATA_DIR=account_dir,COUNTERSIGN_VITE_CACHE=str(run/'vite-cache-5173'))
         for key in ['HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','http_proxy','https_proxy','all_proxy']: env.pop(key,None)
         env['NO_PROXY']='127.0.0.1,localhost'
         env['NODE_OPTIONS']='--dns-result-order=ipv4first'
@@ -215,6 +308,7 @@ def main():
     STATE.mkdir(exist_ok=True)
     meta=json.loads(CURRENT.read_text()) if CURRENT.exists() else None
     if command=='serve': return serve(sys.argv[2],sys.argv[3] if len(sys.argv)>3 else 'demo')
+    if command=='recover-frontend': return recover_frontend(sys.argv[2])
     if command=='stop':
         if meta and running(meta):
             os.kill(meta['pid'],signal.SIGTERM)
@@ -225,7 +319,7 @@ def main():
     if command=='status':
         print('运行中：http://127.0.0.1:5173/' if meta and running(meta) and (STATE/meta['run_id']/'ready').exists() else '未运行')
         if meta and running(meta) and not meta.get('workspace_auth'):
-            print('当前为旧实例，尚未加载本次登录服务；不会自动重启或清空现有链。')
+            print('网页与登录已恢复，原链和后台保留；旧后台尚未加载新版会话检查。' if meta.get('frontend_recovered') else '当前为旧实例，尚未加载本次登录服务；不会自动重启或清空现有链。')
         return
     if command not in ('start','start-empty'): raise RuntimeError('用法：./local.sh start|start-empty|stop|status')
     mode = 'empty' if command == 'start-empty' else 'demo'
@@ -234,7 +328,7 @@ def main():
             raise RuntimeError('已有另一种初始化模式正在运行；如需切换，请先自行运行 ./local.sh stop。不会自动停止当前链。')
         print('已运行：http://127.0.0.1:5173/')
         if not meta.get('workspace_auth'):
-            print('旧实例未加载登录服务；请先保存需要的演示结果，再自行 stop/start。新启动会创建新链。')
+            print('网页与登录已恢复，原链和后台保留；旧后台尚未加载新版会话检查。' if meta.get('frontend_recovered') else '旧实例未加载登录服务；请先保存需要的演示结果，再自行 stop/start。新启动会创建新链。')
         return
     for p in (8545,8000,5173,3000): available(p)
     run_id=time.strftime('%Y%m%d-%H%M%S')+'-'+uuid4().hex[:8]
@@ -242,7 +336,8 @@ def main():
     run.mkdir()
     with (run/'runtime.log').open('w') as log:
         child=subprocess.Popen([sys.executable,str(Path(__file__).resolve()),'serve',run_id,mode],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
-    CURRENT.write_text(json.dumps({'pid':child.pid,'run_id':run_id,'initialization_mode':mode,'workspace_auth':True}))
+    CURRENT.write_text(json.dumps({'pid':child.pid,'run_id':run_id,'initialization_mode':mode,'workspace_auth':True,
+                                 'auth_data_dir':(meta or {}).get('auth_data_dir',str(STATE/'accounts'))}))
     try: wait_for(lambda:(run/'ready').exists(),[child],timeout=45)
     except Exception:
         if child.poll() is None: child.terminate()

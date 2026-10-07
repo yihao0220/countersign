@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react'
 // Set VITE_API_MODE=mock (see .env.mock) to run with the built-in mock API instead.
 export default defineConfig({
   plugins: [react()],
+  cacheDir: process.env.COUNTERSIGN_VITE_CACHE || 'node_modules/.vite',
+  resolve: { dedupe: ['react', 'react-dom'] },
   base: './',
   server: {
     port: 5173,

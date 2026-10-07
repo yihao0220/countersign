@@ -234,6 +234,32 @@ def test_running_rejects_exited_and_invalid_pid(runtime, monkeypatch):
         assert not runtime.running(meta)
 
 
+def test_frontend_bridge_has_its_own_exact_process_role(runtime, monkeypatch):
+    base = '/usr/bin/python /renamed/scripts/local_runtime.py recover-frontend '
+    for suffix, expected in [('saved-run',True), ('saved-run-extra',False), ('saved-run demo',False)]:
+        monkeypatch.setattr(runtime.subprocess, 'run', lambda *a, **k:subprocess.CompletedProcess(a,0,stdout=base+suffix))
+        assert runtime.running({'pid':8020,'run_id':'saved-run'}) is expected
+
+
+def test_bridge_stop_closes_replacement_before_resuming_original(runtime, monkeypatch):
+    events = []
+    class Child:
+        def poll(self): return None
+        def terminate(self): events.append('stop-ui')
+        def wait(self, timeout): events.append('ui-exited')
+    monkeypatch.setattr(runtime.os, 'kill', lambda pid, sig:events.append((pid,sig)))
+    runtime.finish_frontend_recovery(8020,[Child()])
+    assert events == ['stop-ui','ui-exited',(8020,runtime.signal.SIGTERM),(8020,runtime.signal.SIGCONT)]
+
+
+def test_recovery_rejects_another_run_without_signalling(runtime, tmp_path, monkeypatch):
+    current = tmp_path/'current.json'
+    current.write_text(json.dumps({'pid':8020,'run_id':'different'}))
+    monkeypatch.setattr(runtime,'CURRENT',current)
+    monkeypatch.setattr(runtime.os,'kill',lambda *_:pytest.fail('must not signal another run'))
+    with pytest.raises(RuntimeError,match='不匹配'): runtime.recover_frontend('saved-run')
+
+
 def test_serve_command_passes_empty_mode(runtime, tmp_path, monkeypatch):
     monkeypatch.setattr(runtime, 'STATE', tmp_path)
     monkeypatch.setattr(runtime, 'CURRENT', tmp_path / 'current.json')
