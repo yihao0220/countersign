@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f6f5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0e0c" media="(prefers-color-scheme: dark)" />
+    <script>
+      // apply a saved theme before the first paint so dark mode never flashes white
+      try {
+        var t = localStorage.getItem('cs_theme')
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t)
+      } catch (e) {}
+    </script>
+    <meta name="description" content="Countersign 会签: AI invoice payments bounded by registered vendors and approved budgets." />
+    <link rel="icon" type="image/svg+xml" href="/countersign.svg" />
+    <title>Countersign 会签</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

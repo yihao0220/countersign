@@ -1,0 +1,16 @@
+[
+  {"code": 0, "name": "None", "en": "None", "zh": "无"},
+  {"code": 1, "name": "UnknownVendor", "en": "Unknown vendor", "zh": "未知供应商"},
+  {"code": 2, "name": "PayoutMismatch", "en": "Payout mismatch", "zh": "收款地址不符"},
+  {"code": 3, "name": "UnknownPO", "en": "Unknown PO", "zh": "采购单不存在"},
+  {"code": 4, "name": "InvalidAmount", "en": "Zero amount", "zh": "金额为零"},
+  {"code": 5, "name": "OverBudget", "en": "Over budget", "zh": "超出预算"},
+  {"code": 6, "name": "DuplicateInvoice", "en": "Duplicate invoice", "zh": "重复发票"},
+  {"code": 7, "name": "InsufficientFunds", "en": "Insufficient funds", "zh": "金库余额不足"},
+  {"code": 8, "name": "Paused", "en": "Paused", "zh": "已暂停"},
+  {"code": 9, "name": "POExpired", "en": "PO expired", "zh": "采购单已过期"},
+  {"code": 10, "name": "DailyLimitExceeded", "en": "Over daily cap", "zh": "超出每日限额"},
+  {"code": 11, "name": "VendorInactive", "en": "Vendor inactive", "zh": "供应商已停用"},
+  {"code": 12, "name": "POVendorMismatch", "en": "PO belongs to another vendor", "zh": "采购单不属于该供应商"},
+  {"code": 13, "name": "POClosed", "en": "PO closed", "zh": "采购单已关闭"}
+]
